@@ -34,7 +34,6 @@ const int COLOR_BANDS=2;
 int   scalar_col = 0;           //method for scalar coloring
 int   frozen = 0;               //toggles on/off the animation
 
-
 //--- Text
 typedef enum {
     MODE_BITMAP,
@@ -43,6 +42,7 @@ typedef enum {
 
 static mode_type mode;
 static int font_index;
+void* gvBitmapFont = GLUT_BITMAP_TIMES_ROMAN_10;
 
 void print_bitmap_string(void* font, char* s)
 {
@@ -58,21 +58,26 @@ void pDrawBitmapText(GLfloat x, GLfloat y, char* s){
     
     void* bitmap_font = GLUT_BITMAP_TIMES_ROMAN_10;
     
-    GLfloat ystep, yild;
-    
     /* Draw the strings, according to the current mode and font. */
     glColor3f(1.0, 1.0, 1.0);
-    //x = 0.0;//-225.0;
-    //y = 0.0;//70.0;
-    ystep  = 100.0;
-    yild   = 20.0;
-    
-    //glRasterPos2f(-150, y+1.25*yild);
     glRasterPos2f(x, y);
     
     print_bitmap_string(bitmap_font, s);
 }
 
+void pDrawBitmapTextv2(GLfloat x, GLfloat y, GLfloat z, char *string, void *font)
+{
+    int len, i;
+    
+    /* Draw the strings, according to the current mode and font. */
+    glColor3f(1.0, 1.0, 1.0);
+    
+    glRasterPos2f(x, y);
+    len = (int) strlen(string);
+    for (i = 0; i < len; i++) {
+        glutBitmapCharacter(font, string[i]);
+    }
+}
 
 //------ SIMULATION CODE STARTS HERE -----------------------------------------------------------------
 
@@ -247,28 +252,6 @@ void rainbow(float value,float* R,float* G,float* B)
     *B = max(0.0f,(3-(float)fabs(value-1)-(float)fabs(value-2))/2);
 }
 
-//Maps a scalar in [0,1] to a color using a saturation colormap
-void saturation(float value,float* R,float* G,float* B)
-{
-    float color_r = 0;                                    //The base color whose saturation we change
-    float color_g = 1;                                    //Try different colors!
-    float color_b = 0;
-    
-    if (value<0.5)                                        //value in [0,0.5]: modulate the luminance from black to the base-color.
-    {
-        *R = 2*value*color_r;
-        *G = 2*value*color_g;
-        *B = 2*value*color_b;
-    }
-    else                                                    //value in [0.5,1]: modulate the saturation from base-color to white.
-    {
-        value = 2*(value-0.5);
-        *R = (1-value)*color_r + 1*value;
-        *G = (1-value)*color_g + 1*value;
-        *B = (1-value)*color_b + 1*value;
-    }
-}
-
 void pUpdateColorbar(float R,float G,float B){
     glBegin(GL_QUAD_STRIP);
     
@@ -280,12 +263,16 @@ void pUpdateColorbar(float R,float G,float B){
     
     glColor3f(1.0, 0.0, 0.0);   glVertex2f(x, y);   //red
     glColor3f(1.0, 0.0, 0.0);   glVertex2f(w, y);
-    glColor3f(0.0, 1.0, 0.0);   glVertex2f(x, h1);
-    glColor3f(0.0, 1.0, 0.0);   glVertex2f(w, h1);
+    glColor3f(1.0, 0.0, 0.0);   glVertex2f(x, h1);
+    glColor3f(1.0, 0.0, 0.0);   glVertex2f(w, h1);
     glColor3f(0.0, 0.0, 1.0);   glVertex2f(x, h2);
     glColor3f(0.0, 0.0, 1.0);   glVertex2f(w, h2);  //blue
     
     glEnd();
+    
+    pDrawBitmapTextv2(w+3, y-5, 0, "0.0", gvBitmapFont);
+    //pDrawBitmapTextv2(w, -h1, 0, "100.0", gvBitmapFont);
+    pDrawBitmapTextv2(w+3, -h2, 0, "1.0", gvBitmapFont);
 }
 
 //set_colormap: Sets three different types of colormaps
@@ -373,6 +360,8 @@ void visualize(void)
                 set_colormap(rho[idx0]);    glVertex2f(px0, py0);
                 set_colormap(rho[idx2]);    glVertex2f(px2, py2);
                 set_colormap(rho[idx3]);    glVertex2f(px3, py3);
+                
+                pUpdateColorbar(0,0,0);
             }
         }
         glEnd();
@@ -435,7 +424,9 @@ void keyboard(unsigned char key, int x, int y)
         case 'y': draw_vecs = 1 - draw_vecs;
             if (draw_vecs==0) draw_smoke = 1; break;
         case 'm': scalar_col++;
-            if (scalar_col>COLOR_BANDS) scalar_col=COLOR_BLACKWHITE; break;
+            if (scalar_col>COLOR_BANDS) scalar_col=COLOR_BLACKWHITE;
+            //if (scalar_col == COLOR_RAINBOW) pUpdateColorbar(0.0, 0.0, 0.0);
+            break;
         case 'a': frozen = 1-frozen; break;
         case 'q': exit(0);
     }
